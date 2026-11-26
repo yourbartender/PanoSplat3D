@@ -4,6 +4,7 @@ import Foundation
 public enum BrushDiscoverySource: String, Sendable, Equatable {
     case userSelected = "Selected by User"
     case appBundleResource = "Bundled with App"
+    case installedInAppSupport = "Installed by PanoSplat3D"
     case projectDirectory = "Project Folder"
     case applicationsFolder = "Applications"
     case userApplicationsFolder = "User Applications"
@@ -158,7 +159,12 @@ public final class BrushEngineLocator: Sendable {
             }
         }
 
-        // 3. Explicit extra directories (useful for tests & workspace discovery)
+        // 3. PanoSplat3D's one-click installed Tools directory (~/Library/Application Support/PanoSplat3D/Tools)
+        if let found = searchDirectory(BrushInstaller.defaultToolsDirectory, source: .installedInAppSupport) {
+            return found
+        }
+
+        // 4. Explicit extra directories (useful for tests & workspace discovery)
         for dir in additionalSearchDirectories {
             if let found = searchDirectory(dir, source: .projectDirectory) {
                 return found

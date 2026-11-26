@@ -70,4 +70,68 @@ struct BrushEngineLocatorTests {
             #expect(discovered?.executableURL.lastPathComponent == "brush_app")
         }
     }
+
+    @Test("Selects Apple Silicon tar.xz asset from GitHub release JSON")
+    func selectAppleSiliconReleaseAsset() throws {
+        let json = """
+        {
+          "tag_name": "v0.3.0",
+          "assets": [
+            {
+              "name": "brush-app-aarch64-apple-darwin.tar.xz.sha256",
+              "size": 99,
+              "browser_download_url": "https://example.com/brush.tar.xz.sha256"
+            },
+            {
+              "name": "brush-app-x86_64-unknown-linux-gnu.tar.xz",
+              "size": 50000000,
+              "browser_download_url": "https://example.com/brush-linux.tar.xz"
+            },
+            {
+              "name": "brush-app-aarch64-apple-darwin.tar.xz",
+              "size": 41447012,
+              "browser_download_url": "https://example.com/brush-mac.tar.xz"
+            }
+          ]
+        }
+        """
+        let selected = BrushInstaller.selectAppleSiliconAsset(from: Data(json.utf8))
+        #expect(selected?.versionTag == "v0.3.0")
+        #expect(selected?.assetName == "brush-app-aarch64-apple-darwin.tar.xz")
+        #expect(selected?.expectedBytes == 41_447_012)
+        #expect(selected?.downloadURL.absoluteString == "https://example.com/brush-mac.tar.xz")
+    }
+
+    @Test("Extracts tar.xz archive and installs brush_app into Tools directory")
+    func extractAndInstallBrushTarXz() throws {
+        let fm = FileManager.default
+        let tempRoot = fm.temporaryDirectory.appendingPathComponent("BrushInstallTest-\(UUID().uuidString)", isDirectory: true)
+        try fm.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: tempRoot) }
+
+        let payloadDir = tempRoot.appendingPathComponent("payload/brush-app-aarch64-apple-darwin", isDirectory: true)
+        try fm.createDirectory(at: payloadDir, withIntermediateDirectories: true)
+        let fakeBinary = payloadDir.appendingPathComponent("brush_app")
+        try Data("#!/bin/sh\necho ok\n".utf8).write(to: fakeBinary)
+        try fm.setAttributes([.posixPermissions: 0o755], ofItemAtPath: fakeBinary.path)
+
+        let archiveURL = tempRoot.appendingPathComponent("brush-app-aarch64-apple-darwin.tar.xz")
+        let tar = Process()
+        tar.executableURL = URL(fileURLWithPath: "/usr/bin/tar")
+        tar.arguments = ["-cJf", archiveURL.path, "-C", tempRoot.appendingPathComponent("payload").path, "brush-app-aarch64-apple-darwin"]
+        try tar.run()
+        tar.waitUntilExit()
+        #expect(tar.terminationStatus == 0)
+
+        let extractedDir = tempRoot.appendingPathComponent("extracted", isDirectory: true)
+        try fm.createDirectory(at: extractedDir, withIntermediateDirectories: true)
+        try BrushInstaller.extractArchive(archiveURL, to: extractedDir)
+
+        let toolsDir = tempRoot.appendingPathComponent("Tools", isDirectory: true)
+        let installed = try BrushInstaller.installExtractedBinary(from: extractedDir, into: toolsDir)
+        #expect(installed != nil)
+        #expect(installed?.source == .installedInAppSupport)
+        #expect(installed?.executableURL.path == toolsDir.appendingPathComponent("brush_app").path)
+        #expect(fm.isExecutableFile(atPath: toolsDir.appendingPathComponent("brush_app").path))
+    }
 }

@@ -19,6 +19,9 @@ public final class PipelineCoordinator {
 
     public private(set) var brushEngine: ResolvedBrushEngine?
     public var brushError: String?
+    public private(set) var brushInstallState: BrushInstallState = .idle
+    private let brushInstaller = BrushInstaller()
+    private var brushInstallTask: Task<Void, Never>?
 
     public private(set) var depthModelState: DepthModelState = .notDownloaded
     public private(set) var upscalerModelState: UpscalerModelState = .notDownloaded
@@ -362,6 +365,52 @@ public final class PipelineCoordinator {
         } catch {
             brushError = error.localizedDescription
         }
+    }
+
+    /// One-click download & install of the official Apple Silicon Brush engine binary (`ArthurBrussee/brush`)
+    /// into `~/Library/Application Support/PanoSplat3D/Tools/brush_app` with zero Terminal commands.
+    public func installBrushEngine() {
+        guard !brushInstallState.isBusy else { return }
+        brushError = nil
+        brushInstallState = .checkingRelease
+
+        let installer = brushInstaller
+        let locator = brushLocator
+        brushInstallTask = Task.detached(priority: .userInitiated) {
+            do {
+                let installed = try await installer.installLatestBrush { state in
+                    Task { @MainActor in
+                        self.brushInstallState = state
+                    }
+                }
+                let persisted = try? locator.saveUserSelection(installed.displayURL)
+                await MainActor.run {
+                    self.brushEngine = persisted ?? installed
+                    self.brushInstallState = .installed(persisted ?? installed)
+                    self.brushInstallTask = nil
+                    if self.settings.playAlertSounds {
+                        SoundAlertService.shared.playSuccess()
+                    }
+                }
+            } catch is CancellationError {
+                await MainActor.run {
+                    self.brushInstallState = .idle
+                    self.brushInstallTask = nil
+                }
+            } catch {
+                await MainActor.run {
+                    self.brushInstallState = .failed(error.localizedDescription)
+                    self.brushError = error.localizedDescription
+                    self.brushInstallTask = nil
+                }
+            }
+        }
+    }
+
+    public func cancelBrushInstall() {
+        brushInstallTask?.cancel()
+        brushInstallTask = nil
+        brushInstallState = .idle
     }
 
     // MARK: - CoreML Depth Model Download

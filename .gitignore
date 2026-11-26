@@ -28,3 +28,7 @@ target/
 *.ply
 *_colmap/
 GeneratedPanoramas/
+
+# Release archives
+*.dmg
+*.zip

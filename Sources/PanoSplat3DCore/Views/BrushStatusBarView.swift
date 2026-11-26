@@ -32,22 +32,7 @@ public struct BrushStatusBarView: View {
                     .controlSize(.mini)
                     .disabled(coordinator.isRunning)
                 } else {
-                    HStack(spacing: 6) {
-                        Circle()
-                            .fill(Color.orange)
-                            .frame(width: 8, height: 8)
-                        Text("Brush: Missing")
-                            .font(.caption.weight(.semibold))
-                    }
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 4)
-                    .background(Color.orange.opacity(0.16), in: Capsule())
-
-                    Button("Locate Brush...") {
-                        coordinator.locateBrushViaDialog()
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.mini)
+                    brushMissingOrInstallingControls
                 }
 
                 Divider()
@@ -72,6 +57,76 @@ public struct BrushStatusBarView: View {
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
         )
+    }
+
+    @ViewBuilder
+    private var brushMissingOrInstallingControls: some View {
+        switch coordinator.brushInstallState {
+        case .checkingRelease:
+            HStack(spacing: 6) {
+                ProgressView()
+                    .controlSize(.mini)
+                Text("Checking Brush release...")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Button("Cancel") {
+                    coordinator.cancelBrushInstall()
+                }
+                .controlSize(.mini)
+            }
+
+        case .downloading(let progress, let dlMB, let totMB, let tag):
+            HStack(spacing: 6) {
+                ProgressView(value: progress, total: 1.0)
+                    .frame(width: 80)
+                Text(String(format: "Brush %@ (%.0f/%.0f MB)", tag, dlMB, totMB))
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                Button("Cancel") {
+                    coordinator.cancelBrushInstall()
+                }
+                .controlSize(.mini)
+            }
+
+        case .extracting:
+            HStack(spacing: 6) {
+                ProgressView()
+                    .controlSize(.mini)
+                Text("Installing Brush...")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+        case .idle, .installed, .failed:
+            HStack(spacing: 6) {
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(Color.orange)
+                        .frame(width: 8, height: 8)
+                    Text("Brush: Missing")
+                        .font(.caption.weight(.semibold))
+                }
+                .padding(.horizontal, 9)
+                .padding(.vertical, 4)
+                .background(Color.orange.opacity(0.16), in: Capsule())
+
+                Button {
+                    coordinator.installBrushEngine()
+                } label: {
+                    Label("Install Brush (~40 MB)", systemImage: "arrow.down.circle.fill")
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.mini)
+                .help("Automatically downloads & installs the official Apple Silicon Brush release from GitHub into PanoSplat3D's Tools folder.")
+
+                Button("Locate...") {
+                    coordinator.locateBrushViaDialog()
+                }
+                .controlSize(.mini)
+                .help("Select an existing Brush.app or brush_app binary on your Mac")
+            }
+        }
     }
 
     @ViewBuilder

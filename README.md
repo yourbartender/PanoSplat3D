@@ -47,7 +47,7 @@ A 100% native Apple Silicon macOS application (**Swift 6**, **SwiftUI**, **Metal
 
 - **macOS 15.0+** on **Apple Silicon (`arm64`)**
 - **Xcode 16+** / **Swift 6.0+**
-- **[Brush](https://github.com/ArthurBrussee/brush)** (`Brush.app` in `/Applications`, or place the compiled `brush_app` / `brush` binary in the repository root or locate it via the in-app picker)
+- **[Brush](https://github.com/ArthurBrussee/brush)** — If Brush is not already installed on your Mac, PanoSplat3D offers a 1-click **`Install Brush (~40 MB)`** button right in the top status bar (downloads the official Apple Silicon release into `~/Library/Application Support/PanoSplat3D/Tools/brush_app`), or you can locate an existing `Brush.app` / `brush_app` binary via the native file picker.
 
 ```bash
 # 1. Run unit & Metal integration tests
@@ -58,6 +58,9 @@ swift test
 
 # 3. Launch
 open PanoSplat3D.app
+
+# Optional: Package a distributable .dmg (without Brush bundled)
+./Scripts/build_dmg.sh
 ```
 
 See **[USER_GUIDE.md](USER_GUIDE.md)** for the complete step-by-step workflow manual, parameter tuning table, and Virtual Production import notes.
