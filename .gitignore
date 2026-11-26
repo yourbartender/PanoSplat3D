@@ -1,0 +1,30 @@
+# macOS Finder & metadata
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Swift Package Manager & Xcode
+.build/
+.swiftpm/
+DerivedData/
+*.xcodeproj
+*.xcworkspace
+*.xcuserstate
+*.moved-aside
+
+# Built app bundle & large external binaries (>100 MB)
+PanoSplat3D.app/
+brush_app
+
+# Rust / Burn / CubeCL autotune caches
+target/
+
+# Cached CoreML models (auto-downloaded at runtime)
+*.mlpackage/
+*.mlmodelc/
+
+# Local test & generated outputs
+*.ply
+*_colmap/
+GeneratedPanoramas/
